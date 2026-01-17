@@ -378,7 +378,7 @@ class BatchedInferencePipeline:
 
         if multilingual and not self.model.model.is_multilingual:
             self.model.logger.warning(
-                "The current model is English-only but the multilingual parameter is set to"
+                "The current model is English-only but the multilingual parameter is set to "
                 "True; setting to False instead."
             )
             multilingual = False
@@ -867,7 +867,7 @@ class WhisperModel:
 
         if multilingual and not self.model.is_multilingual:
             self.logger.warning(
-                "The current model is English-only but the multilingual parameter is set to"
+                "The current model is English-only but the multilingual parameter is set to "
                 "True; setting to False instead."
             )
             multilingual = False
