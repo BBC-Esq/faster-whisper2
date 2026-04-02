@@ -12,7 +12,7 @@ from faster_whisper.utils import (
 ALL_MODEL_NAMES = list(_MODELS.keys())
 
 COMPUTE_TYPES_EXPLICIT = ["float32", "float16", "bfloat16"]
-COMPUTE_TYPES_QUANTIZED = ["int8", "int8_float16", "int16"]
+COMPUTE_TYPES_QUANTIZED = ["int8", "int8_float16", "int8_float32", "int8_bfloat16", "int16"]
 COMPUTE_TYPES_AUTO = ["auto", "default"]
 ALL_COMPUTE_TYPES = COMPUTE_TYPES_EXPLICIT + COMPUTE_TYPES_QUANTIZED + COMPUTE_TYPES_AUTO
 
