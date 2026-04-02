@@ -91,6 +91,51 @@ Here is a non exhaustive list of open-source projects using faster-whisper. Feel
 
 </details>
 
+<details>
+<summary>Compute type compatibility reference (click to expand)</summary>
+
+When you specify a `compute_type`, faster-whisper2 validates that it is compatible with your device before downloading anything. If an incompatible combination is detected, a clear error is raised. For quantized types (e.g. `int8`), the library automatically downloads the best source precision for your hardware and CTranslate2 handles the runtime conversion.
+
+### Supported compute types by device
+
+| Compute Type | CPU | CUDA >= 6.1 | CUDA >= 7.0 | CUDA >= 8.0 |
+| --- | --- | --- | --- | --- |
+| `float32` | Yes | Yes | Yes | Yes |
+| `float16` | No | No | Yes | Yes |
+| `bfloat16` | No | No | No | Yes |
+| `int8` | Yes | Yes | Yes | Yes |
+| `int8_float16` | No | No | Yes | Yes |
+| `int8_float32` | Yes | Yes | Yes | Yes |
+| `int8_bfloat16` | No | No | No | Yes |
+| `int16` | Yes (Intel MKL only) | No | No | No |
+| `auto` | Yes | Yes | Yes | Yes |
+| `default` | Yes | Yes | Yes | Yes |
+
+### Which model precision is downloaded
+
+| Device | Requested Compute Type | Downloaded Precision |
+| --- | --- | --- |
+| CPU | Any | float32 |
+| CUDA (any) | `float32` | float32 |
+| CUDA (any) | `float16` | float16 |
+| CUDA (any) | `bfloat16` | bfloat16 |
+| CUDA >= 8.0 (Ampere+) | `int8`, `int8_float16`, `int8_float32`, `int8_bfloat16`, `auto`, `default` | bfloat16 |
+| CUDA < 8.0 (pre-Ampere) | `int8`, `int8_float16`, `int8_float32`, `int8_bfloat16`, `auto`, `default` | float16 |
+
+### CUDA compute capability by GPU generation
+
+| Generation | Compute Capability | Example GPUs |
+| --- | --- | --- |
+| Maxwell | 5.x | GTX 950, GTX 970, GTX 980 |
+| Pascal | 6.x | GTX 1060, GTX 1070, GTX 1080 |
+| Turing | 7.x | RTX 2060, RTX 2070, RTX 2080 |
+| Ampere | 8.x | RTX 3060, RTX 3070, RTX 3080, A100 |
+| Ada Lovelace | 8.9 | RTX 4060, RTX 4070, RTX 4080, RTX 4090 |
+| Hopper | 9.0 | H100 |
+| Blackwell | 10.0 | RTX 5070, RTX 5080, RTX 5090, B200 |
+
+</details>
+
 ## Contributing
 
 Pull requests are welcome! Before submitting, make sure your code passes the following checks. You can run them locally to catch issues early:
