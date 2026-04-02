@@ -14,11 +14,34 @@ ALL_MODEL_NAMES = list(_MODELS.keys())
 COMPUTE_TYPES_EXPLICIT = ["float32", "float16", "bfloat16"]
 COMPUTE_TYPES_QUANTIZED = ["int8", "int8_float16", "int16"]
 COMPUTE_TYPES_AUTO = ["auto", "default"]
+ALL_COMPUTE_TYPES = COMPUTE_TYPES_EXPLICIT + COMPUTE_TYPES_QUANTIZED + COMPUTE_TYPES_AUTO
+
+SCENARIOS = [
+    ("cpu", None),
+    ("cuda", True),
+    ("cuda", False),
+]
+
+SCENARIO_LABELS = {
+    ("cpu", None): "CPU",
+    ("cuda", True): "CUDA (Ampere+)",
+    ("cuda", False): "CUDA (pre-Ampere)",
+}
+
+
+def _expected_precision(device, compute_type, bf16_support):
+    if device == "cpu":
+        return "float32"
+    if compute_type in ("float32", "float16", "bfloat16"):
+        return compute_type
+    if bf16_support:
+        return "bfloat16"
+    return "float16"
 
 
 class TestSelectDownloadPrecision:
     def test_cpu_always_returns_float32(self):
-        for ct in COMPUTE_TYPES_EXPLICIT + COMPUTE_TYPES_QUANTIZED + COMPUTE_TYPES_AUTO:
+        for ct in ALL_COMPUTE_TYPES:
             result = _select_download_precision("cpu", ct)
             assert result == "float32", f"cpu + {ct} should yield float32, got {result}"
 
@@ -85,53 +108,6 @@ class TestGetModelRepoId:
         )
 
 
-class TestFullPermutations:
-    @patch("faster_whisper.utils._gpu_supports_bfloat16", return_value=True)
-    def test_all_models_cpu_all_compute_types(self, _mock):
-        all_compute_types = COMPUTE_TYPES_EXPLICIT + COMPUTE_TYPES_QUANTIZED + COMPUTE_TYPES_AUTO
-        for model in ALL_MODEL_NAMES:
-            for ct in all_compute_types:
-                precision = _select_download_precision("cpu", ct)
-                repo_id = _get_model_repo_id(model, precision)
-                assert (
-                    repo_id == f"ctranslate2-4you/{_MODELS[model]}-ct2-float32"
-                ), f"cpu + {model} + {ct}: expected float32 repo, got {repo_id}"
-
-    @patch("faster_whisper.utils._gpu_supports_bfloat16", return_value=True)
-    def test_all_models_cuda_ampere_all_compute_types(self, _mock):
-        for model in ALL_MODEL_NAMES:
-            for ct in COMPUTE_TYPES_EXPLICIT:
-                precision = _select_download_precision("cuda", ct)
-                repo_id = _get_model_repo_id(model, precision)
-                assert repo_id.endswith(
-                    f"-ct2-{ct}"
-                ), f"cuda ampere + {model} + {ct}: expected {ct} repo, got {repo_id}"
-
-            for ct in COMPUTE_TYPES_QUANTIZED + COMPUTE_TYPES_AUTO:
-                precision = _select_download_precision("cuda", ct)
-                repo_id = _get_model_repo_id(model, precision)
-                assert repo_id.endswith(
-                    "-ct2-bfloat16"
-                ), f"cuda ampere + {model} + {ct}: expected bfloat16 repo, got {repo_id}"
-
-    @patch("faster_whisper.utils._gpu_supports_bfloat16", return_value=False)
-    def test_all_models_cuda_pre_ampere_all_compute_types(self, _mock):
-        for model in ALL_MODEL_NAMES:
-            for ct in COMPUTE_TYPES_EXPLICIT:
-                precision = _select_download_precision("cuda", ct)
-                repo_id = _get_model_repo_id(model, precision)
-                assert repo_id.endswith(
-                    f"-ct2-{ct}"
-                ), f"cuda pre-ampere + {model} + {ct}: expected {ct} repo, got {repo_id}"
-
-            for ct in COMPUTE_TYPES_QUANTIZED + COMPUTE_TYPES_AUTO:
-                precision = _select_download_precision("cuda", ct)
-                repo_id = _get_model_repo_id(model, precision)
-                assert repo_id.endswith(
-                    "-ct2-float16"
-                ), f"cuda pre-ampere + {model} + {ct}: expected float16 repo, got {repo_id}"
-
-
 class TestEdgeCases:
     def test_invalid_model_name_not_in_models(self):
         with pytest.raises(KeyError):
@@ -151,3 +127,50 @@ class TestEdgeCases:
             mock_bf16.return_value = True
             _select_download_precision("cuda", "int8", device_index=2)
             mock_bf16.assert_called_once_with(2)
+
+
+class TestFullPermutationTable:
+    def test_all_permutations_with_table(self, capsys):
+        header = (
+            f"{'Model':<20} {'Compute Type':<16} {'Device':<18} "
+            f"{'Expected':<12} {'Got':<12} {'Repo ID':<58} {'Status'}"
+        )
+        separator = "-" * len(header)
+        lines = ["\n", separator, header, separator]
+        total = 0
+        passed = 0
+        failed = 0
+
+        for device, bf16_support in SCENARIOS:
+            label = SCENARIO_LABELS[(device, bf16_support)]
+            mock_target = "faster_whisper.utils._gpu_supports_bfloat16"
+
+            for model in ALL_MODEL_NAMES:
+                for ct in ALL_COMPUTE_TYPES:
+                    total += 1
+                    expected = _expected_precision(device, ct, bf16_support)
+
+                    with patch(mock_target, return_value=bf16_support or False):
+                        actual = _select_download_precision(device, ct)
+                        repo_id = _get_model_repo_id(model, actual)
+
+                    ok = actual == expected
+                    status = "PASS" if ok else "FAIL"
+                    if ok:
+                        passed += 1
+                    else:
+                        failed += 1
+
+                    lines.append(
+                        f"{model:<20} {ct:<16} {label:<18} "
+                        f"{expected:<12} {actual:<12} {repo_id:<58} {status}"
+                    )
+
+        lines.append(separator)
+        lines.append(f"Total: {total}  |  Passed: {passed}  |  Failed: {failed}")
+        lines.append(separator)
+
+        table = "\n".join(lines)
+        print(table)
+
+        assert failed == 0, f"{failed} permutations failed"
