@@ -1742,6 +1742,10 @@ class WhisperModel:
 
         if audio is not None:
             if vad_filter:
+                if vad_parameters is None:
+                    vad_parameters = VadOptions()
+                elif isinstance(vad_parameters, dict):
+                    vad_parameters = VadOptions(**vad_parameters)
                 speech_chunks = get_speech_timestamps(audio, vad_parameters)
                 audio_chunks, chunks_metadata = collect_chunks(audio, speech_chunks)
                 audio = np.concatenate(audio_chunks, axis=0)
