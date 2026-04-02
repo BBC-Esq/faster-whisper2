@@ -872,6 +872,16 @@ class WhisperModel:
             elif isinstance(vad_parameters, dict):
                 vad_parameters = VadOptions(**vad_parameters)
             speech_chunks = get_speech_timestamps(audio, vad_parameters)
+            if not speech_chunks:
+                return iter([]), TranscriptionInfo(
+                    language=language or "",
+                    language_probability=0,
+                    duration=duration,
+                    duration_after_vad=0,
+                    transcription_options=None,
+                    vad_options=vad_parameters,
+                    all_language_probs=None,
+                )
             audio_chunks, chunks_metadata = collect_chunks(audio, speech_chunks)
             audio = np.concatenate(audio_chunks, axis=0)
             duration_after_vad = audio.shape[0] / sampling_rate
@@ -1747,8 +1757,9 @@ class WhisperModel:
                 elif isinstance(vad_parameters, dict):
                     vad_parameters = VadOptions(**vad_parameters)
                 speech_chunks = get_speech_timestamps(audio, vad_parameters)
-                audio_chunks, chunks_metadata = collect_chunks(audio, speech_chunks)
-                audio = np.concatenate(audio_chunks, axis=0)
+                if speech_chunks:
+                    audio_chunks, chunks_metadata = collect_chunks(audio, speech_chunks)
+                    audio = np.concatenate(audio_chunks, axis=0)
 
             audio = audio[: language_detection_segments * self.feature_extractor.n_samples]
             features = self.feature_extractor(audio)
