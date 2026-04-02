@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "faster-whisper2"
+dynamic = ["version"]
+description = "Faster Whisper transcription with CTranslate2"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [
+    { name = "BBC-Esq" },
+]
+keywords = ["openai", "whisper", "speech", "ctranslate2", "inference", "quantization", "transformer"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "ctranslate2>=4.0,<5",
+    "huggingface_hub>=0.23",
+    "tokenizers>=0.13,<1",
+    "onnxruntime>=1.14,<2",
+    "av>=11",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+conversion = ["transformers[torch]>=4.23"]
+dev = [
+    "black==23.*",
+    "flake8==6.*",
+    "isort==5.*",
+    "pytest==7.*",
+]
+
+[project.urls]
+Homepage = "https://github.com/BBC-Esq/faster-whisper2"
+Repository = "https://github.com/BBC-Esq/faster-whisper2"
+Issues = "https://github.com/BBC-Esq/faster-whisper2/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "faster_whisper.version.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["faster_whisper*"]
+
+[tool.setuptools.package-data]
+faster_whisper = ["assets/*.onnx"]
+
+[tool.flake8]
+max-line-length = 100
+ignore = ["E203", "W503"]
+
+[tool.isort]
+profile = "black"
+lines_between_types = 1
+
+[tool.black]
+line-length = 100

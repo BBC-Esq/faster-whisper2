@@ -76,11 +76,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install wheel
+          pip install build
 
       - name: Build package
         run: |
-          python3 setup.py sdist bdist_wheel
+          python -m build
 
       - name: Push package on PyPI
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
