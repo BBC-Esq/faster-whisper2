@@ -29,6 +29,28 @@ SCENARIO_LABELS = {
     ("cuda", False): "CUDA (pre-Ampere)",
 }
 
+AMPERE_CUDA_TYPES = {
+    "int8_float32",
+    "bfloat16",
+    "int8_float16",
+    "float32",
+    "float16",
+    "int8",
+    "int8_bfloat16",
+}
+
+PRE_AMPERE_CUDA_TYPES = {
+    "int8_float32",
+    "int8_float16",
+    "float32",
+    "float16",
+    "int8",
+}
+
+CPU_TYPES = {"int8", "float32", "int8_float32", "int16"}
+
+EMPTY_TYPES = set()
+
 
 def _expected_precision(device, compute_type, bf16_support):
     if device == "cpu":
@@ -134,89 +156,104 @@ class TestValidateComputeType:
     def test_auto_and_default_always_pass(self):
         for device in ("cpu", "cuda"):
             for ct in ("auto", "default"):
-                validate_compute_type(device, ct)
+                with patch("faster_whisper.utils._get_supported_compute_types", return_value=set()):
+                    validate_compute_type(device, ct)
 
-    def test_cpu_valid_types(self):
+    @patch(
+        "faster_whisper.utils._get_supported_compute_types",
+        return_value=CPU_TYPES,
+    )
+    def test_cpu_valid_types(self, _mock):
         for ct in ("float32", "int8", "int8_float32", "int16"):
             validate_compute_type("cpu", ct)
 
-    def test_cpu_rejects_float16(self):
-        with pytest.raises(ValueError, match="not supported on CPU"):
+    @patch(
+        "faster_whisper.utils._get_supported_compute_types",
+        return_value=CPU_TYPES,
+    )
+    def test_cpu_rejects_float16(self, _mock):
+        with pytest.raises(ValueError, match="not supported on cpu"):
             validate_compute_type("cpu", "float16")
 
-    def test_cpu_rejects_bfloat16(self):
-        with pytest.raises(ValueError, match="not supported on CPU"):
+    @patch(
+        "faster_whisper.utils._get_supported_compute_types",
+        return_value=CPU_TYPES,
+    )
+    def test_cpu_rejects_bfloat16(self, _mock):
+        with pytest.raises(ValueError, match="not supported on cpu"):
             validate_compute_type("cpu", "bfloat16")
 
-    def test_cpu_rejects_int8_float16(self):
-        with pytest.raises(ValueError, match="not supported on CPU"):
+    @patch(
+        "faster_whisper.utils._get_supported_compute_types",
+        return_value=CPU_TYPES,
+    )
+    def test_cpu_rejects_int8_float16(self, _mock):
+        with pytest.raises(ValueError, match="not supported on cpu"):
             validate_compute_type("cpu", "int8_float16")
 
-    def test_cpu_rejects_int8_bfloat16(self):
-        with pytest.raises(ValueError, match="not supported on CPU"):
+    @patch(
+        "faster_whisper.utils._get_supported_compute_types",
+        return_value=CPU_TYPES,
+    )
+    def test_cpu_rejects_int8_bfloat16(self, _mock):
+        with pytest.raises(ValueError, match="not supported on cpu"):
             validate_compute_type("cpu", "int8_bfloat16")
 
-    @patch("faster_whisper.utils._get_cuda_compute_capability", return_value=(8, 6))
+    @patch(
+        "faster_whisper.utils._get_supported_compute_types",
+        return_value=AMPERE_CUDA_TYPES,
+    )
     def test_cuda_ampere_accepts_all_cuda_types(self, _mock):
-        for ct in (
-            "float32",
-            "float16",
-            "bfloat16",
-            "int8",
-            "int8_float16",
-            "int8_float32",
-            "int8_bfloat16",
-        ):
+        for ct in AMPERE_CUDA_TYPES:
             validate_compute_type("cuda", ct)
 
-    @patch("faster_whisper.utils._get_cuda_compute_capability", return_value=(7, 5))
-    def test_cuda_turing_accepts_float16_and_int8(self, _mock):
-        for ct in ("float32", "float16", "int8", "int8_float16", "int8_float32"):
+    @patch(
+        "faster_whisper.utils._get_supported_compute_types",
+        return_value=PRE_AMPERE_CUDA_TYPES,
+    )
+    def test_cuda_pre_ampere_accepts_supported_types(self, _mock):
+        for ct in PRE_AMPERE_CUDA_TYPES:
             validate_compute_type("cuda", ct)
 
-    @patch("faster_whisper.utils._get_cuda_compute_capability", return_value=(7, 5))
-    def test_cuda_turing_rejects_bfloat16(self, _mock):
-        with pytest.raises(ValueError, match="compute capability >= 8.0"):
+    @patch(
+        "faster_whisper.utils._get_supported_compute_types",
+        return_value=PRE_AMPERE_CUDA_TYPES,
+    )
+    def test_cuda_pre_ampere_rejects_bfloat16(self, _mock):
+        with pytest.raises(ValueError, match="not supported on cuda"):
             validate_compute_type("cuda", "bfloat16")
 
-    @patch("faster_whisper.utils._get_cuda_compute_capability", return_value=(7, 5))
-    def test_cuda_turing_rejects_int8_bfloat16(self, _mock):
-        with pytest.raises(ValueError, match="compute capability >= 8.0"):
+    @patch(
+        "faster_whisper.utils._get_supported_compute_types",
+        return_value=PRE_AMPERE_CUDA_TYPES,
+    )
+    def test_cuda_pre_ampere_rejects_int8_bfloat16(self, _mock):
+        with pytest.raises(ValueError, match="not supported on cuda"):
             validate_compute_type("cuda", "int8_bfloat16")
 
-    @patch("faster_whisper.utils._get_cuda_compute_capability", return_value=(5, 2))
-    def test_cuda_old_gpu_rejects_float16(self, _mock):
-        with pytest.raises(ValueError, match="compute capability >= 7.0"):
-            validate_compute_type("cuda", "float16")
-
-    @patch("faster_whisper.utils._get_cuda_compute_capability", return_value=(5, 2))
-    def test_cuda_old_gpu_rejects_int8(self, _mock):
-        with pytest.raises(ValueError, match="compute capability >= 6.1"):
-            validate_compute_type("cuda", "int8")
-
-    @patch("faster_whisper.utils._get_cuda_compute_capability", return_value=(6, 1))
-    def test_cuda_pascal_61_accepts_int8(self, _mock):
-        validate_compute_type("cuda", "int8")
-
-    def test_cuda_int16_always_rejected(self):
-        with pytest.raises(ValueError, match="only supported on CPU"):
+    @patch(
+        "faster_whisper.utils._get_supported_compute_types",
+        return_value=PRE_AMPERE_CUDA_TYPES,
+    )
+    def test_cuda_pre_ampere_rejects_int16(self, _mock):
+        with pytest.raises(ValueError, match="not supported on cuda"):
             validate_compute_type("cuda", "int16")
 
-    @patch("faster_whisper.utils._get_cuda_compute_capability", return_value=(None, None))
-    def test_cuda_unknown_gpu_skips_capability_checks(self, _mock):
-        for ct in ("float32", "float16", "bfloat16", "int8", "int8_float16", "int8_bfloat16"):
-            validate_compute_type("cuda", ct)
+    @patch(
+        "faster_whisper.utils._get_supported_compute_types",
+        return_value=EMPTY_TYPES,
+    )
+    def test_unknown_device_skips_validation(self, _mock):
+        validate_compute_type("cuda", "bfloat16")
 
 
 class TestValidationTable:
     def test_all_validation_permutations_with_table(self):
         gpu_scenarios = [
-            ("cpu", None, None, "CPU"),
-            ("cuda", 8, 6, "CUDA (Ampere 8.6)"),
-            ("cuda", 7, 5, "CUDA (Turing 7.5)"),
-            ("cuda", 6, 1, "CUDA (Pascal 6.1)"),
-            ("cuda", 5, 2, "CUDA (Maxwell 5.2)"),
-            ("cuda", None, None, "CUDA (unknown)"),
+            ("cpu", CPU_TYPES, "CPU"),
+            ("cuda", AMPERE_CUDA_TYPES, "CUDA (Ampere+)"),
+            ("cuda", PRE_AMPERE_CUDA_TYPES, "CUDA (pre-Ampere)"),
+            ("cuda", EMPTY_TYPES, "CUDA (unknown)"),
         ]
 
         header = f"{'Compute Type':<16} {'Device':<22} {'Expected':<12} {'Got':<12} {'Status'}"
@@ -226,14 +263,20 @@ class TestValidationTable:
         passed = 0
         failed = 0
 
-        for device, major, minor, label in gpu_scenarios:
+        for device, supported_types, label in gpu_scenarios:
             for ct in ALL_COMPUTE_TYPES:
                 total += 1
-                should_reject = _should_reject(device, ct, major)
+
+                if ct in ("auto", "default"):
+                    should_reject = False
+                elif not supported_types:
+                    should_reject = False
+                else:
+                    should_reject = ct not in supported_types
 
                 with patch(
-                    "faster_whisper.utils._get_cuda_compute_capability",
-                    return_value=(major, minor),
+                    "faster_whisper.utils._get_supported_compute_types",
+                    return_value=supported_types,
                 ):
                     try:
                         validate_compute_type(device, ct)
@@ -259,29 +302,6 @@ class TestValidationTable:
 
         print("\n".join(lines))
         assert failed == 0, f"{failed} validation permutations failed"
-
-
-def _should_reject(device, compute_type, major):
-    if compute_type in ("auto", "default"):
-        return False
-
-    if device == "cpu":
-        return compute_type in ("float16", "bfloat16", "int8_float16", "int8_bfloat16")
-
-    if compute_type == "int16":
-        return True
-
-    if major is None:
-        return False
-
-    if compute_type in ("float16", "int8_float16") and major < 7:
-        return True
-    if compute_type in ("bfloat16", "int8_bfloat16") and major < 8:
-        return True
-    if compute_type == "int8" and major < 6:
-        return True
-
-    return False
 
 
 class TestFullPermutationTable:
