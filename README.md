@@ -90,3 +90,50 @@ Here is a non exhaustive list of open-source projects using faster-whisper. Feel
 * [Whisper-FastAPI](https://github.com/heimoshuiyu/whisper-fastapi) whisper-fastapi is a very simple script that provides an API backend compatible with OpenAI, HomeAssistant, and Konele (Android voice typing) formats.
 
 </details>
+
+## Contributing
+
+Pull requests are welcome! Before submitting, make sure your code passes the CI checks that run automatically on every PR. You can run them locally to catch issues early:
+
+### 1. Black (code formatting)
+
+[Black](https://github.com/psf/black) enforces a consistent code style. It handles things like indentation, trailing commas, quote style, and line wrapping. The project uses a max line length of 100 characters.
+
+```bash
+black --check .     # check for issues
+black .             # auto-fix formatting
+```
+
+### 2. isort (import sorting)
+
+[isort](https://github.com/PyCQA/isort) ensures imports are grouped (stdlib, third-party, local) and alphabetically sorted. It's configured to be compatible with Black.
+
+```bash
+isort --check-only .   # check for issues
+isort .                # auto-fix import order
+```
+
+### 3. Flake8 (linting)
+
+[Flake8](https://github.com/PyCQA/flake8) catches common issues like unused imports, undefined names, and style violations. Max line length is 100 characters.
+
+```bash
+flake8 .
+```
+
+### 4. Pytest (tests)
+
+The test suite must pass. Some tests require model downloads and may take a while on the first run.
+
+```bash
+pytest -v tests/
+```
+
+### Quick setup
+
+Install the dev dependencies and run all checks:
+
+```bash
+pip install -e ".[dev]"
+black . && isort . && flake8 . && pytest -v tests/
+```
