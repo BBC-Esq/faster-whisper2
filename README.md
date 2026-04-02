@@ -93,7 +93,7 @@ Here is a non exhaustive list of open-source projects using faster-whisper. Feel
 
 ## Contributing
 
-Pull requests are welcome! Before submitting, make sure your code passes the CI checks that run automatically on every PR. You can run them locally to catch issues early:
+Pull requests are welcome! Before submitting, make sure your code passes the following checks. You can run them locally to catch issues early:
 
 ### 1. Black (code formatting)
 
