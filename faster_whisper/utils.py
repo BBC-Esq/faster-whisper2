@@ -2,8 +2,9 @@ import logging
 import os
 import re
 
-from typing import List, Optional, Union
+from typing import List, Optional, Set, Union
 
+import ctranslate2
 import huggingface_hub
 
 from tqdm.auto import tqdm
@@ -42,19 +43,15 @@ def get_logger():
     return logging.getLogger("faster_whisper")
 
 
-def _get_cuda_compute_capability(device_index=0):
+def _get_supported_compute_types(device: str) -> Set[str]:
     try:
-        import torch
-
-        major, minor = torch.cuda.get_device_capability(device_index)
-        return major, minor
-    except (ImportError, Exception):
-        return None, None
+        return ctranslate2.get_supported_compute_types(device)
+    except Exception:
+        return set()
 
 
 def _gpu_supports_bfloat16(device_index=0):
-    major, _ = _get_cuda_compute_capability(device_index)
-    return major is not None and major >= 8
+    return "bfloat16" in _get_supported_compute_types("cuda")
 
 
 def _select_download_precision(device, compute_type, device_index=0):
@@ -73,43 +70,17 @@ def validate_compute_type(device, compute_type, device_index=0):
     if compute_type in ("auto", "default"):
         return
 
-    if device == "cpu":
-        unsupported = {"float16", "bfloat16", "int8_float16", "int8_bfloat16"}
-        if compute_type in unsupported:
-            raise ValueError(
-                f"Compute type '{compute_type}' is not supported on CPU. "
-                f"Supported CPU types: float32, int8, int8_float32, int16 (Intel MKL only)."
-            )
+    supported = _get_supported_compute_types(device)
+
+    if not supported:
         return
 
-    if device == "cuda":
-        major, _ = _get_cuda_compute_capability(device_index)
-
-        if compute_type == "int16":
-            raise ValueError(
-                "Compute type 'int16' is only supported on CPU with Intel MKL. "
-                "For CUDA, use int8, int8_float16, int8_bfloat16, float16, bfloat16, or float32."
-            )
-
-        if major is not None:
-            if compute_type in ("float16", "int8_float16") and major < 7:
-                raise ValueError(
-                    f"Compute type '{compute_type}' requires CUDA compute capability >= 7.0. "
-                    f"Your GPU has compute capability {major}.x."
-                )
-
-            if compute_type in ("bfloat16", "int8_bfloat16") and major < 8:
-                raise ValueError(
-                    f"Compute type '{compute_type}' requires CUDA compute capability >= 8.0 "
-                    f"(Ampere or newer). Your GPU has compute capability {major}.x. "
-                    f"Use float16 or int8_float16 instead."
-                )
-
-            if compute_type == "int8" and major < 6:
-                raise ValueError(
-                    f"Compute type 'int8' requires CUDA compute capability >= 6.1. "
-                    f"Your GPU has compute capability {major}.x."
-                )
+    if compute_type not in supported:
+        sorted_types = sorted(supported)
+        raise ValueError(
+            f"Compute type '{compute_type}' is not supported on {device}. "
+            f"Supported types: {', '.join(sorted_types)}."
+        )
 
 
 def _get_model_repo_id(model_name, precision):
