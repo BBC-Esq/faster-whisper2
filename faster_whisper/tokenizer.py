@@ -68,9 +68,8 @@ class Tokenizer:
 
     @cached_property
     def no_speech(self) -> int:
-        return self.tokenizer.token_to_id("<|nospeech|>") or self.tokenizer.token_to_id(
-            "<|nocaptions|>"
-        )
+        result = self.tokenizer.token_to_id("<|nospeech|>")
+        return result if result is not None else self.tokenizer.token_to_id("<|nocaptions|>")
 
     @property
     def timestamp_begin(self) -> int:
