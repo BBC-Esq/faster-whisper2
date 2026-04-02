@@ -9,25 +9,21 @@ import huggingface_hub
 from tqdm.auto import tqdm
 
 _MODELS = {
-    "tiny.en": "Systran/faster-whisper-tiny.en",
-    "tiny": "Systran/faster-whisper-tiny",
-    "base.en": "Systran/faster-whisper-base.en",
-    "base": "Systran/faster-whisper-base",
-    "small.en": "Systran/faster-whisper-small.en",
-    "small": "Systran/faster-whisper-small",
-    "medium.en": "Systran/faster-whisper-medium.en",
-    "medium": "Systran/faster-whisper-medium",
-    "large-v1": "Systran/faster-whisper-large-v1",
-    "large-v2": "Systran/faster-whisper-large-v2",
-    "large-v3": "Systran/faster-whisper-large-v3",
-    "large": "Systran/faster-whisper-large-v3",
-    "distil-large-v2": "Systran/faster-distil-whisper-large-v2",
-    "distil-medium.en": "Systran/faster-distil-whisper-medium.en",
-    "distil-small.en": "Systran/faster-distil-whisper-small.en",
-    "distil-large-v3": "Systran/faster-distil-whisper-large-v3",
-    "distil-large-v3.5": "distil-whisper/distil-large-v3.5-ct2",
-    "large-v3-turbo": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
-    "turbo": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
+    "tiny.en": "whisper-tiny.en",
+    "tiny": "whisper-tiny",
+    "base.en": "whisper-base.en",
+    "base": "whisper-base",
+    "small.en": "whisper-small.en",
+    "small": "whisper-small",
+    "medium.en": "whisper-medium.en",
+    "medium": "whisper-medium",
+    "large-v3": "whisper-large-v3",
+    "distil-small.en": "distil-whisper-small.en",
+    "distil-medium.en": "distil-whisper-medium.en",
+    "distil-large-v3": "distil-whisper-large-v3",
+    "distil-large-v3.5": "whisper-distil-large-v3.5",
+    "large-v3-turbo": "whisper-large-v3-turbo",
+    "turbo": "whisper-large-v3-turbo",
 }
 
 
@@ -46,6 +42,33 @@ def get_logger():
     return logging.getLogger("faster_whisper")
 
 
+def _gpu_supports_bfloat16(device_index=0):
+    try:
+        import torch
+
+        major, _ = torch.cuda.get_device_capability(device_index)
+        return major >= 8
+    except (ImportError, Exception):
+        return False
+
+
+def _select_download_precision(device, compute_type, device_index=0):
+    if device == "cpu":
+        return "float32"
+
+    if compute_type in ("float32", "float16", "bfloat16"):
+        return compute_type
+
+    if _gpu_supports_bfloat16(device_index):
+        return "bfloat16"
+    return "float16"
+
+
+def _get_model_repo_id(model_name, precision):
+    base_name = _MODELS[model_name]
+    return f"ctranslate2-4you/{base_name}-ct2-{precision}"
+
+
 def download_model(
     size_or_id: str,
     output_dir: Optional[str] = None,
@@ -53,24 +76,35 @@ def download_model(
     cache_dir: Optional[str] = None,
     revision: Optional[str] = None,
     use_auth_token: Optional[Union[str, bool]] = None,
+    device: str = "cpu",
+    compute_type: str = "default",
+    device_index: int = 0,
 ):
     """Downloads a CTranslate2 Whisper model from the Hugging Face Hub.
 
+    The model precision (float32, float16, bfloat16) is automatically selected
+    based on the device and compute_type. For GPU with quantized compute types
+    (int8, etc.), the best available precision is chosen as a source for runtime
+    conversion.
+
     Args:
-      size_or_id: Size of the model to download from https://huggingface.co/Systran
-        (tiny, tiny.en, base, base.en, small, small.en, distil-small.en, medium, medium.en,
-        distil-medium.en, large-v1, large-v2, large-v3, large, distil-large-v2,
-        distil-large-v3), or a CTranslate2-converted model ID from the Hugging Face Hub
-        (e.g. Systran/faster-whisper-large-v3).
-      output_dir: Directory where the model should be saved. If not set, the model is saved in
-        the cache directory.
-      local_files_only:  If True, avoid downloading the file and return the path to the local
-        cached file if it exists.
+      size_or_id: Size of the model to download from ctranslate2-4you on HuggingFace
+        (tiny, tiny.en, base, base.en, small, small.en, distil-small.en, medium,
+        medium.en, distil-medium.en, large-v3, distil-large-v3, distil-large-v3.5,
+        large-v3-turbo, turbo), or a CTranslate2-converted model ID from the
+        Hugging Face Hub (e.g. ctranslate2-4you/whisper-large-v3-ct2-float16).
+      output_dir: Directory where the model should be saved. If not set, the model
+        is saved in the cache directory.
+      local_files_only: If True, avoid downloading the file and return the path to
+        the local cached file if it exists.
       cache_dir: Path to the folder where cached files are stored.
       revision: An optional Git revision id which can be a branch name, a tag, or a
-            commit hash.
-      use_auth_token: HuggingFace authentication token or True to use the
-            token stored by the HuggingFace config folder.
+        commit hash.
+      use_auth_token: HuggingFace authentication token or True to use the token
+        stored by the HuggingFace config folder.
+      device: Device type ("cpu" or "cuda") used to select model precision.
+      compute_type: Compute type used to select model precision.
+      device_index: GPU device index, used to check bfloat16 support.
 
     Returns:
       The path to the downloaded model.
@@ -81,12 +115,13 @@ def download_model(
     if re.match(r".*/.*", size_or_id):
         repo_id = size_or_id
     else:
-        repo_id = _MODELS.get(size_or_id)
-        if repo_id is None:
+        if size_or_id not in _MODELS:
             raise ValueError(
                 "Invalid model size '%s', expected one of: %s"
                 % (size_or_id, ", ".join(_MODELS.keys()))
             )
+        precision = _select_download_precision(device, compute_type, device_index)
+        repo_id = _get_model_repo_id(size_or_id, precision)
 
     allow_patterns = [
         "config.json",

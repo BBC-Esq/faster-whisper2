@@ -660,6 +660,9 @@ class WhisperModel:
         """
         self.logger = get_logger()
 
+        if device == "auto":
+            device = "cuda" if ctranslate2.get_cuda_device_count() > 0 else "cpu"
+
         tokenizer_bytes, preprocessor_bytes = None, None
         if files:
             model_path = model_size_or_path
@@ -674,6 +677,9 @@ class WhisperModel:
                 cache_dir=download_root,
                 revision=revision,
                 use_auth_token=use_auth_token,
+                device=device,
+                compute_type=compute_type,
+                device_index=device_index[0] if isinstance(device_index, list) else device_index,
             )
 
         self.model = ctranslate2.models.Whisper(
