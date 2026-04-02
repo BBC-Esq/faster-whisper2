@@ -19,7 +19,13 @@ from tqdm import tqdm
 from faster_whisper.audio import decode_audio, pad_or_trim
 from faster_whisper.feature_extractor import FeatureExtractor
 from faster_whisper.tokenizer import _LANGUAGE_CODES, Tokenizer
-from faster_whisper.utils import download_model, format_timestamp, get_end, get_logger
+from faster_whisper.utils import (
+    download_model,
+    format_timestamp,
+    get_end,
+    get_logger,
+    validate_compute_type,
+)
 from faster_whisper.vad import (
     SpeechTimestampsMap,
     VadOptions,
@@ -662,6 +668,12 @@ class WhisperModel:
 
         if device == "auto":
             device = "cuda" if ctranslate2.get_cuda_device_count() > 0 else "cpu"
+
+        validate_compute_type(
+            device,
+            compute_type,
+            device_index[0] if isinstance(device_index, list) else device_index,
+        )
 
         tokenizer_bytes, preprocessor_bytes = None, None
         if files:
