@@ -21,8 +21,7 @@ class Tokenizer:
         if multilingual:
             if task not in _TASKS:
                 raise ValueError(
-                    "'%s' is not a valid task (accepted tasks: %s)"
-                    % (task, ", ".join(_TASKS))
+                    "'%s' is not a valid task (accepted tasks: %s)" % (task, ", ".join(_TASKS))
                 )
 
             if language not in _LANGUAGE_CODES:
@@ -107,9 +106,7 @@ class Tokenizer:
             else:
                 outputs[-1].append(token)
 
-        return "".join(
-            [s if isinstance(s, str) else self.tokenizer.decode(s) for s in outputs]
-        )
+        return "".join([s if isinstance(s, str) else self.tokenizer.decode(s) for s in outputs])
 
     @cached_property
     def non_speech_tokens(self) -> Tuple[int]:
@@ -124,9 +121,7 @@ class Tokenizer:
         keeping basic punctuations like commas, periods, question marks, exclamation points, etc.
         """
         symbols = list('"#()*+/:;<=>@[\\]^_`{|}~「」『』')
-        symbols += (
-            "<< >> <<< >>> -- --- -( -[ (' (\" (( )) ((( ))) [[ ]] {{ }} ♪♪ ♪♪♪".split()
-        )
+        symbols += "<< >> <<< >>> -- --- -( -[ (' (\" (( )) ((( ))) [[ ]] {{ }} ♪♪ ♪♪♪".split()
 
         # symbols that may be a single token or multiple tokens depending on the tokenizer.
         # In case they're multiple tokens, suppress the first token, which is safe because:
@@ -147,9 +142,7 @@ class Tokenizer:
 
         return tuple(sorted(result))
 
-    def split_to_word_tokens(
-        self, tokens: List[int]
-    ) -> Tuple[List[str], List[List[int]]]:
+    def split_to_word_tokens(self, tokens: List[int]) -> Tuple[List[str], List[List[int]]]:
         if self.language_code in {"zh", "ja", "th", "lo", "my", "yue"}:
             # These languages don't typically use spaces, so it is difficult to split words
             # without morpheme analysis. Here, we instead split words at any
@@ -158,9 +151,7 @@ class Tokenizer:
 
         return self.split_tokens_on_spaces(tokens)
 
-    def split_tokens_on_unicode(
-        self, tokens: List[int]
-    ) -> Tuple[List[str], List[List[int]]]:
+    def split_tokens_on_unicode(self, tokens: List[int]) -> Tuple[List[str], List[List[int]]]:
         decoded_full = self.decode_with_timestamps(tokens)
         replacement_char = "\ufffd"
 
@@ -190,9 +181,7 @@ class Tokenizer:
 
         return words, word_tokens
 
-    def split_tokens_on_spaces(
-        self, tokens: List[int]
-    ) -> Tuple[List[str], List[List[int]]]:
+    def split_tokens_on_spaces(self, tokens: List[int]) -> Tuple[List[str], List[List[int]]]:
         subwords, subword_tokens_list = self.split_tokens_on_unicode(tokens)
         words = []
         word_tokens = []

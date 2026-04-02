@@ -46,9 +46,7 @@ args = parser.parse_args()
 with open(os.path.join(os.path.dirname(__file__), "normalizer.json"), "r") as f:
     normalizer = EnglishTextNormalizer(json.load(f))
 
-dataset = load_dataset("mobiuslabsgmbh/youtube-commons-asr-eval", streaming=True).map(
-    url_to_audio
-)
+dataset = load_dataset("mobiuslabsgmbh/youtube-commons-asr-eval", streaming=True).map(url_to_audio)
 model = WhisperModel("large-v3", device="cuda")
 pipeline = BatchedInferencePipeline(model, device="cuda")
 

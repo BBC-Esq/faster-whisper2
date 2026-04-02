@@ -81,9 +81,7 @@ def get_speech_timestamps(
     min_speech_samples = sampling_rate * min_speech_duration_ms / 1000
     speech_pad_samples = sampling_rate * speech_pad_ms / 1000
     max_speech_samples = (
-        sampling_rate * max_speech_duration_s
-        - window_size_samples
-        - 2 * speech_pad_samples
+        sampling_rate * max_speech_duration_s - window_size_samples - 2 * speech_pad_samples
     )
     min_silence_samples = sampling_rate * min_silence_duration_ms / 1000
     min_silence_samples_at_max_speech = sampling_rate * min_silence_at_max_speech / 1000
@@ -92,9 +90,7 @@ def get_speech_timestamps(
 
     model = get_vad_model()
 
-    padded_audio = np.pad(
-        audio, (0, window_size_samples - audio.shape[0] % window_size_samples)
-    )
+    padded_audio = np.pad(audio, (0, window_size_samples - audio.shape[0] % window_size_samples))
     speech_probs = model(padded_audio)
 
     triggered = False
@@ -175,9 +171,7 @@ def get_speech_timestamps(
                 continue
             else:
                 current_speech["end"] = temp_end
-                if (
-                    current_speech["end"] - current_speech["start"]
-                ) > min_speech_samples:
+                if (current_speech["end"] - current_speech["start"]) > min_speech_samples:
                     speeches.append(current_speech)
                 current_speech = {}
                 prev_end = next_start = temp_end = 0
@@ -185,10 +179,7 @@ def get_speech_timestamps(
                 possible_ends = []
                 continue
 
-    if (
-        current_speech
-        and (audio_length_samples - current_speech["start"]) > min_speech_samples
-    ):
+    if current_speech and (audio_length_samples - current_speech["start"]) > min_speech_samples:
         current_speech["end"] = audio_length_samples
         speeches.append(current_speech)
 
@@ -203,16 +194,12 @@ def get_speech_timestamps(
                     max(0, speeches[i + 1]["start"] - silence_duration // 2)
                 )
             else:
-                speech["end"] = int(
-                    min(audio_length_samples, speech["end"] + speech_pad_samples)
-                )
+                speech["end"] = int(min(audio_length_samples, speech["end"] + speech_pad_samples))
                 speeches[i + 1]["start"] = int(
                     max(0, speeches[i + 1]["start"] - speech_pad_samples)
                 )
         else:
-            speech["end"] = int(
-                min(audio_length_samples, speech["end"] + speech_pad_samples)
-            )
+            speech["end"] = int(min(audio_length_samples, speech["end"] + speech_pad_samples))
 
     return speeches
 
@@ -241,10 +228,7 @@ def collect_chunks(
     current_audio = np.array([], dtype=np.float32)
 
     for chunk in chunks:
-        if (
-            current_duration + chunk["end"] - chunk["start"]
-            > max_duration * sampling_rate
-        ):
+        if current_duration + chunk["end"] - chunk["start"] > max_duration * sampling_rate:
             audio_chunks.append(current_audio)
             chunk_metadata = {
                 "offset": total_duration / sampling_rate,
@@ -260,9 +244,7 @@ def collect_chunks(
             current_duration = chunk["end"] - chunk["start"]
         else:
             current_segments.append(chunk)
-            current_audio = np.concatenate(
-                (current_audio, audio[chunk["start"] : chunk["end"]])
-            )
+            current_audio = np.concatenate((current_audio, audio[chunk["start"] : chunk["end"]]))
 
             current_duration += chunk["end"] - chunk["start"]
 
@@ -331,9 +313,7 @@ class SileroVADModel:
         try:
             import onnxruntime
         except ImportError as e:
-            raise RuntimeError(
-                "Applying the VAD filter requires the onnxruntime package"
-            ) from e
+            raise RuntimeError("Applying the VAD filter requires the onnxruntime package") from e
 
         opts = onnxruntime.SessionOptions()
         opts.inter_op_num_threads = 1
@@ -347,13 +327,9 @@ class SileroVADModel:
             sess_options=opts,
         )
 
-    def __call__(
-        self, audio: np.ndarray, num_samples: int = 512, context_size_samples: int = 64
-    ):
+    def __call__(self, audio: np.ndarray, num_samples: int = 512, context_size_samples: int = 64):
         assert audio.ndim == 1, "Input should be a 1D array"
-        assert (
-            audio.shape[0] % num_samples == 0
-        ), "Input size should be a multiple of num_samples"
+        assert audio.shape[0] % num_samples == 0, "Input size should be a multiple of num_samples"
 
         h = np.zeros((1, 1, 128), dtype="float32")
         c = np.zeros((1, 1, 128), dtype="float32")
@@ -365,9 +341,7 @@ class SileroVADModel:
         batched_audio = np.empty((num_frames, frame_width), dtype=np.float32)
         batched_audio[:, context_size_samples:] = frames
         if num_frames > 1:
-            batched_audio[1:, :context_size_samples] = frames[
-                :-1, -context_size_samples:
-            ]
+            batched_audio[1:, :context_size_samples] = frames[:-1, -context_size_samples:]
         batched_audio[0, :context_size_samples] = 0.0
 
         encoder_batch_size = 10000

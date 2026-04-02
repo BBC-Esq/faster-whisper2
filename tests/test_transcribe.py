@@ -43,16 +43,12 @@ def test_transcribe(jfk_path):
     assert segment.start == segment.words[0].start
     assert segment.end == segment.words[-1].end
     batched_model = BatchedInferencePipeline(model=model)
-    result, info = batched_model.transcribe(
-        jfk_path, word_timestamps=True, vad_filter=False
-    )
+    result, info = batched_model.transcribe(jfk_path, word_timestamps=True, vad_filter=False)
     assert info.language == "en"
     assert info.language_probability > 0.7
     segments = []
     for segment in result:
-        segments.append(
-            {"start": segment.start, "end": segment.end, "text": segment.text}
-        )
+        segments.append({"start": segment.start, "end": segment.end, "text": segment.text})
 
     assert len(segments) == 1
     assert segment.text == (
@@ -69,9 +65,7 @@ def test_batched_transcribe(physcisworks_path):
     assert info.language_probability > 0.7
     segments = []
     for segment in result:
-        segments.append(
-            {"start": segment.start, "end": segment.end, "text": segment.text}
-        )
+        segments.append({"start": segment.start, "end": segment.end, "text": segment.text})
     # number of near 30 sec segments
     assert len(segments) == 6
 
@@ -84,9 +78,7 @@ def test_batched_transcribe(physcisworks_path):
     segments = []
     for segment in result:
         assert segment.words is not None
-        segments.append(
-            {"start": segment.start, "end": segment.end, "text": segment.text}
-        )
+        segments.append({"start": segment.start, "end": segment.end, "text": segment.text})
     assert len(segments) > 7
 
 
@@ -214,8 +206,7 @@ def test_multilingual_transcription(data_dir):
     assert (
         "Dokumentationsdatein erhält, wird hiermit unengeltlich die Genehmigung erteilt,"
         " wird der Software und eingeschränkt zu verfahren. Dies umfasst insbesondere das Recht,"
-        " die Software zu verwenden, zu vervielfältigen, zu modifizieren"
-        in segments[1].text
+        " die Software zu verwenden, zu vervielfältigen, zu modifizieren" in segments[1].text
     )
     assert segments[1].language == "de"
 

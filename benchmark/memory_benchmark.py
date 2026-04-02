@@ -10,9 +10,7 @@ from utils import MyThread, get_logger, inference
 
 logger = get_logger("faster-whisper")
 parser = argparse.ArgumentParser(description="Memory benchmark")
-parser.add_argument(
-    "--gpu_memory", action="store_true", help="Measure GPU memory usage"
-)
+parser.add_argument("--gpu_memory", action="store_true", help="Measure GPU memory usage")
 parser.add_argument("--device-index", type=int, default=0, help="GPU device index")
 parser.add_argument(
     "--interval",
@@ -41,12 +39,8 @@ def measure_memory(func: Callable[[], None]):
 
         def _get_gpu_info():
             while True:
-                info["gpu_memory_usage"].append(
-                    nvml.nvmlDeviceGetMemoryInfo(handle).used >> 20
-                )
-                info["gpu_power_usage"].append(
-                    nvml.nvmlDeviceGetPowerUsage(handle) / 1000
-                )
+                info["gpu_memory_usage"].append(nvml.nvmlDeviceGetMemoryInfo(handle).used >> 20)
+                info["gpu_power_usage"].append(nvml.nvmlDeviceGetPowerUsage(handle) / 1000)
                 time.sleep(interval)
 
                 if stop:
