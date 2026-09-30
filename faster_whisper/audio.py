@@ -43,7 +43,12 @@ def decode_audio(
     raw_buffer = io.BytesIO()
     dtype = None
 
-    with av.open(input_file, mode="r", metadata_errors="ignore") as container:
+    # PyAV 19 removed metadata_errors; it always reads metadata as UTF-8 with surrogateescape.
+    kwargs = {"mode": "r"}
+    if int(av.__version__.split(".")[0]) < 19:
+        kwargs["metadata_errors"] = "ignore"
+
+    with av.open(input_file, **kwargs) as container:
         frames = container.decode(audio=0)
         frames = _ignore_invalid_frames(frames)
         frames = _group_frames(frames, 500000)
