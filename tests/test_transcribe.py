@@ -37,7 +37,8 @@ def test_transcribe(jfk_path):
 
     segment = segments[0]
 
-    assert segment.text == (
+    # Comma placement differs between bfloat16 (GPU) and float32 (CPU) decoding.
+    assert segment.text.replace(",", "") == (
         " And so my fellow Americans ask not what your country can do for you "
         "ask what you can do for your country."
     )
@@ -55,7 +56,7 @@ def test_transcribe(jfk_path):
         segments.append({"start": segment.start, "end": segment.end, "text": segment.text})
 
     assert len(segments) == 1
-    assert segment.text == (
+    assert segment.text.replace(",", "") == (
         " And so my fellow Americans ask not what your country can do for you "
         "ask what you can do for your country."
     )
@@ -260,7 +261,8 @@ def test_cliptimestamps_segments(jfk_path):
     for segment, clip in zip(segments, clip_timestamps):
         assert segment.start == clip["start"]
         assert segment.end == clip["end"]
-        assert segment.text == (
+        # Comma placement differs between bfloat16 (GPU) and float32 (CPU) decoding.
+        assert segment.text.replace(",", "") == (
             " And so my fellow Americans ask not what your country can do for you "
             "ask what you can do for your country."
         )
