@@ -352,3 +352,16 @@ def test_feature_size_falls_back_to_model_n_mels(tmp_path):
         model = WhisperModel(str(tmp_path), device="cpu")
 
     assert model.feature_extractor.mel_filters.shape[0] == 128
+
+
+def test_batched_english_only_model(jfk_path):
+    model = WhisperModel("tiny.en")
+    pipeline = BatchedInferencePipeline(model=model)
+
+    for language in (None, "en"):
+        segments, info = pipeline.transcribe(jfk_path, batch_size=16, language=language)
+        segments = list(segments)
+
+        assert info.language == "en"
+        assert segments
+        assert all(segment.language == "en" for segment in segments)

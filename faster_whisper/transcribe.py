@@ -157,7 +157,11 @@ class BatchedInferencePipeline:
                             tokenizer.decode(subsegment["tokens"])
                         ),
                         seek=int(chunk_metadata["offset"] * self.model.frames_per_second),
-                        language=tokenizer.tokenizer.id_to_token(output["language_token"])[2:-2],
+                        language=(
+                            tokenizer.tokenizer.id_to_token(output["language_token"])[2:-2]
+                            if output["language_token"] is not None
+                            else tokenizer.language_code
+                        ),
                     )
                     for subsegment in subsegments
                 ]
