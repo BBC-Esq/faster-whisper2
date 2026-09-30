@@ -2,6 +2,7 @@ import inspect
 import os
 
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import numpy as np
 
@@ -339,3 +340,13 @@ def test_find_alignment_empty_alignment():
     segments = [[{"seek": 0, "start": 0.0, "end": 0.01, "tokens": tokens}]]
     model.add_word_timestamps(segments, tokenizer, None, 1, "", "", 0.0)
     assert segments[0][0]["words"] == []
+
+
+def test_feature_size_falls_back_to_model_n_mels(tmp_path):
+    WhisperModel("tiny").hf_tokenizer.save(str(tmp_path / "tokenizer.json"))
+
+    with patch("ctranslate2.models.Whisper") as whisper_cls:
+        whisper_cls.return_value.n_mels = 128
+        model = WhisperModel(str(tmp_path), device="cpu")
+
+    assert model.feature_extractor.mel_filters.shape[0] == 128
