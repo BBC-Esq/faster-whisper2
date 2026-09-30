@@ -1,9 +1,12 @@
 import inspect
 import os
 
+from types import SimpleNamespace
+
 import numpy as np
 
 from faster_whisper import BatchedInferencePipeline, WhisperModel, decode_audio
+from faster_whisper.tokenizer import Tokenizer
 from faster_whisper.transcribe import merge_punctuations
 
 
@@ -317,3 +320,22 @@ def test_merge_punctuations_single_char():
 
     words = [w["word"] for w in alignment if w["word"]]
     assert words == [' "hello.']
+
+
+def test_find_alignment_empty_alignment():
+    model = WhisperModel("tiny")
+    tokenizer = Tokenizer(model.hf_tokenizer, False)
+    tokens = tokenizer.encode(" Thank you.")
+
+    # ctranslate2 >= 4.8.1 returns an empty alignment for a window with no frames.
+    class EmptyAlignModel:
+        def align(self, *args, **kwargs):
+            return [SimpleNamespace(alignments=[], text_token_probs=[])]
+
+    model.model = EmptyAlignModel()
+
+    assert model.find_alignment(tokenizer, [tokens], None, [1]) == [[]]
+
+    segments = [[{"seek": 0, "start": 0.0, "end": 0.01, "tokens": tokens}]]
+    model.add_word_timestamps(segments, tokenizer, None, 1, "", "", 0.0)
+    assert segments[0][0]["words"] == []
