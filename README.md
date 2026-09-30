@@ -12,14 +12,13 @@ Unlike openai-whisper, FFmpeg does **not** need to be installed on the system. T
 
 ### GPU
 
-GPU execution requires the following NVIDIA libraries to be installed:
+GPU execution requires the following NVIDIA library to be installed:
 
 * [cuBLAS for CUDA 12](https://developer.nvidia.com/cublas)
-* [cuDNN 9 for CUDA 12](https://developer.nvidia.com/cudnn)
 
-**Note**: faster-whisper2 requires `ctranslate2` 4.8.1 or newer, which supports CUDA 12 and cuDNN 9 (older `ctranslate2` releases can crash the Python process when word-level timestamps are enabled). CUDA 11 and cuDNN 8 are not supported.
+**Note**: faster-whisper2 requires `ctranslate2` 4.8.1 or newer, which supports CUDA 12 and no longer needs cuDNN (older `ctranslate2` releases can crash the Python process when word-level timestamps are enabled). CUDA 11 is not supported.
 
-There are multiple ways to install the NVIDIA libraries mentioned above. The recommended way is described in the official NVIDIA documentation, but we also suggest other installation methods below.
+There are multiple ways to install the NVIDIA library mentioned above. The recommended way is described in the official NVIDIA documentation, but we also suggest other installation methods below.
 
 <details>
 <summary>Other installation methods (click to expand)</summary>
@@ -29,16 +28,16 @@ There are multiple ways to install the NVIDIA libraries mentioned above. The rec
 
 #### Use Docker
 
-The libraries (cuBLAS, cuDNN) are installed in this official NVIDIA CUDA Docker images: `nvidia/cuda:12.3.2-cudnn9-runtime-ubuntu22.04`.
+cuBLAS is included in the official NVIDIA CUDA runtime Docker images, such as `nvidia/cuda:12.8.1-runtime-ubuntu22.04`.
 
 #### Install with `pip` (Linux only)
 
-On Linux these libraries can be installed with `pip`. Note that `LD_LIBRARY_PATH` must be set before launching Python.
+On Linux cuBLAS can be installed with `pip`. Note that `LD_LIBRARY_PATH` must be set before launching Python.
 
 ```bash
-pip install nvidia-cublas-cu12 nvidia-cudnn-cu12==9.*
+pip install nvidia-cublas-cu12
 
-export LD_LIBRARY_PATH=`python3 -c 'import os; import nvidia.cublas.lib; import nvidia.cudnn.lib; print(os.path.dirname(nvidia.cublas.lib.__file__) + ":" + os.path.dirname(nvidia.cudnn.lib.__file__))'`
+export LD_LIBRARY_PATH=`python3 -c 'import os; import nvidia.cublas.lib; print(os.path.dirname(nvidia.cublas.lib.__file__))'`
 ```
 
 
