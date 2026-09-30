@@ -17,7 +17,7 @@ GPU execution requires the following NVIDIA libraries to be installed:
 * [cuBLAS for CUDA 12](https://developer.nvidia.com/cublas)
 * [cuDNN 9 for CUDA 12](https://developer.nvidia.com/cudnn)
 
-**Note**: The latest versions of `ctranslate2` only support CUDA 12 and cuDNN 9. For CUDA 11 and cuDNN 8, the current workaround is downgrading to the `3.24.0` version of `ctranslate2`, for CUDA 12 and cuDNN 8, downgrade to the `4.4.0` version of `ctranslate2`, (This can be done with `pip install --force-reinstall ctranslate2==4.4.0` or specifying the version in a `requirements.txt`).
+**Note**: faster-whisper2 requires `ctranslate2` 4.8.1 or newer, which supports CUDA 12 and cuDNN 9 (older `ctranslate2` releases can crash the Python process when word-level timestamps are enabled). CUDA 11 and cuDNN 8 are not supported.
 
 There are multiple ways to install the NVIDIA libraries mentioned above. The recommended way is described in the official NVIDIA documentation, but we also suggest other installation methods below.
 
@@ -25,7 +25,7 @@ There are multiple ways to install the NVIDIA libraries mentioned above. The rec
 <summary>Other installation methods (click to expand)</summary>
 
 
-**Note:** For all these methods below, keep in mind the above note regarding CUDA versions. Depending on your setup, you may need to install the _CUDA 11_ versions of libraries that correspond to the CUDA 12 libraries listed in the instructions below.
+**Note:** For all these methods below, keep in mind the above note regarding CUDA versions.
 
 #### Use Docker
 
