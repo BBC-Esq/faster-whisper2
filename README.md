@@ -37,7 +37,7 @@ On Linux cuBLAS can be installed with `pip`. Note that `LD_LIBRARY_PATH` must be
 ```bash
 pip install nvidia-cublas-cu12
 
-export LD_LIBRARY_PATH=`python3 -c 'import os; import nvidia.cublas.lib; print(os.path.dirname(nvidia.cublas.lib.__file__))'`
+export LD_LIBRARY_PATH=$(python3 -c 'import os, nvidia.cublas; print(os.path.dirname(nvidia.cublas.__path__[0]) + "/cublas/lib")')
 ```
 
 
