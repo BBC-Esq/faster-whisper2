@@ -365,3 +365,18 @@ def test_batched_english_only_model(jfk_path):
         assert info.language == "en"
         assert segments
         assert all(segment.language == "en" for segment in segments)
+
+
+def test_batched_initial_prompt_token_ids(jfk_path):
+    model = WhisperModel("tiny")
+    pipeline = BatchedInferencePipeline(model=model)
+    prompt = "This is the speech that the president gave to the nation."
+    token_ids = model.hf_tokenizer.encode(" " + prompt, add_special_tokens=False).ids
+
+    segments, _ = pipeline.transcribe(jfk_path, initial_prompt=prompt)
+    expected = [segment.text for segment in segments]
+    assert expected
+
+    for initial_prompt in (token_ids, iter(token_ids)):
+        segments, _ = pipeline.transcribe(jfk_path, initial_prompt=initial_prompt)
+        assert [segment.text for segment in segments] == expected

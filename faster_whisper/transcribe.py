@@ -191,8 +191,8 @@ class BatchedInferencePipeline:
             tokenizer,
             previous_tokens=(
                 tokenizer.encode(" " + options.initial_prompt.strip())
-                if options.initial_prompt is not None
-                else []
+                if isinstance(options.initial_prompt, str)
+                else options.initial_prompt or []
             ),
             without_timestamps=options.without_timestamps,
             hotwords=options.hotwords,
@@ -327,7 +327,7 @@ class BatchedInferencePipeline:
             temperature: Temperature for sampling. If a list or tuple is passed,
                 only the first value is used.
             initial_prompt: Optional text string or iterable of token ids to provide as a
-                prompt for the each window.
+                prompt for each window.
             suppress_blank: Suppress blank outputs at the beginning of the sampling.
             suppress_tokens: List of token IDs to suppress. -1 will suppress a default set
                 of symbols as defined in `tokenizer.non_speech_tokens()`.
@@ -530,7 +530,12 @@ class BatchedInferencePipeline:
             temperatures=(
                 temperature[:1] if isinstance(temperature, (list, tuple)) else [temperature]
             ),
-            initial_prompt=initial_prompt,
+            # Token ids are reused for every batch, so read a one-shot iterator only once.
+            initial_prompt=(
+                initial_prompt
+                if initial_prompt is None or isinstance(initial_prompt, str)
+                else list(initial_prompt)
+            ),
             prefix=prefix,
             suppress_blank=suppress_blank,
             suppress_tokens=(
