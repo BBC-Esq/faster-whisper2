@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
+import pytest
 
 from faster_whisper import BatchedInferencePipeline, WhisperModel, decode_audio
 from faster_whisper.tokenizer import Tokenizer
@@ -380,3 +381,67 @@ def test_batched_initial_prompt_token_ids(jfk_path):
     for initial_prompt in (token_ids, iter(token_ids)):
         segments, _ = pipeline.transcribe(jfk_path, initial_prompt=initial_prompt)
         assert [segment.text for segment in segments] == expected
+
+
+@pytest.mark.parametrize("word_timestamps", [False, True])
+@pytest.mark.parametrize("end_position", [549, 550])
+def test_sliver_left_at_clip_end_is_not_decoded(jfk_path, end_position, word_timestamps):
+    model = WhisperModel("tiny")
+    calls = []
+
+    # The window opens a new segment at 10.98 s or 11.00 s of the 11 s clip. Decoding what is
+    # left would be a window of almost only padding, and with word timestamps the window would
+    # first rewind to the last word; Whisper invents text for either.
+    def generate_with_fallback(encoder_output, prompt, tokenizer, options):
+        calls.append(prompt)
+        end = tokenizer.timestamp_begin + end_position
+        tokens = [tokenizer.timestamp_begin, *tokenizer.encode(" Ask not."), end, end]
+        return SimpleNamespace(sequences_ids=[tokens], no_speech_prob=0.0), -0.1, 0.0, 1.0
+
+    model.generate_with_fallback = generate_with_fallback
+    segments, _ = model.transcribe(jfk_path, language="en", word_timestamps=word_timestamps)
+
+    assert [segment.text for segment in segments] == [" Ask not."]
+    assert len(calls) == 1
+
+
+def test_tail_longer_than_a_sliver_is_still_decoded(jfk_path):
+    model = WhisperModel("tiny")
+    calls = []
+
+    # The window opens a new segment 1 s before the end of the clip: that second is decoded.
+    def generate_with_fallback(encoder_output, prompt, tokenizer, options):
+        calls.append(prompt)
+        if len(calls) == 1:
+            end = tokenizer.timestamp_begin + 500
+            tokens = [tokenizer.timestamp_begin, *tokenizer.encode(" Ask not."), end, end]
+        else:
+            end = tokenizer.timestamp_begin + 25
+            tokens = [tokenizer.timestamp_begin, *tokenizer.encode(" Out!"), end]
+        return SimpleNamespace(sequences_ids=[tokens], no_speech_prob=0.0), -0.1, 0.0, 1.0
+
+    model.generate_with_fallback = generate_with_fallback
+    segments, _ = model.transcribe(jfk_path, language="en")
+
+    assert [segment.text for segment in segments] == [" Ask not.", " Out!"]
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize("word_timestamps", [False, True])
+@pytest.mark.parametrize("with_real_segment", [True, False])
+def test_segments_starting_after_the_clip_are_dropped(jfk_path, with_real_segment, word_timestamps):
+    model = WhisperModel("tiny")
+
+    # Segments starting where the 11 s clip ends, like Whisper's trailing "Yeah!" loops; word
+    # timestamps must not squeeze them back into the clip.
+    def generate_with_fallback(encoder_output, prompt, tokenizer, options):
+        ts = tokenizer.timestamp_begin
+        tokens = [ts, *tokenizer.encode(" Ask not."), ts + 250] if with_real_segment else []
+        tokens += [ts + 550, *tokenizer.encode(" Yeah!"), ts + 575, ts + 575]
+        tokens += [*tokenizer.encode(" Yeah!"), ts + 600]
+        return SimpleNamespace(sequences_ids=[tokens], no_speech_prob=0.0), -0.1, 0.0, 1.0
+
+    model.generate_with_fallback = generate_with_fallback
+    segments, _ = model.transcribe(jfk_path, language="en", word_timestamps=word_timestamps)
+
+    assert [segment.text for segment in segments] == ([" Ask not."] if with_real_segment else [])

@@ -1282,7 +1282,22 @@ class WhisperModel:
                 seek=seek,
             )
 
-            if options.word_timestamps:
+            # A segment starting where the clip ends has no audio behind it. Drop it before word
+            # timestamps would squeeze its words into the end of the clip.
+            clip_end = seek_clip_end * self.feature_extractor.time_per_frame
+            current_segments = [
+                segment
+                for segment in current_segments
+                if round(segment["start"], 2) < round(clip_end, 2)
+            ]
+
+            # With less than 0.3 s of the clip left, the clip is done: decoding the sliver pads it
+            # to a 30 s window, and Whisper then invents text ("you", "Thank you.", a repeat).
+            clip_done = seek_clip_end - seek < round(0.3 * self.frames_per_second)
+            if clip_done:
+                seek = max(seek, seek_clip_end)
+
+            if options.word_timestamps and current_segments:
                 self.add_word_timestamps(
                     [current_segments],
                     tokenizer,
@@ -1292,7 +1307,7 @@ class WhisperModel:
                     options.append_punctuations,
                     last_speech_timestamp=last_speech_timestamp,
                 )
-                if not single_timestamp_ending:
+                if not single_timestamp_ending and not clip_done:
                     last_word_end = get_end(current_segments)
                     if last_word_end is not None and last_word_end > time_offset:
                         seek = round(last_word_end * self.frames_per_second)
